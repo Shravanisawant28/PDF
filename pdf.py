@@ -25,12 +25,12 @@ SUPPORTED_LANGUAGES = {"en": "eng", "hi": "hin", "mr": "mar"}
 DEFAULT_LANGUAGE = "eng"
 
 # Configure Tesseract OCR path (Update based on your system)
-pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_PATH", "/usr/bin/tesseract")
 
 
 # Configure Poppler path (Update based on your system)
 # No need to set POPPLER_PATH explicitly on Render since it's installed globally
-POPPLER_PATH = None  # Remove or set to None
+POPPLER_PATH = os.getenv("POPPLER_PATH", "/usr/bin") # Remove or set to None
 
 
 
