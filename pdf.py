@@ -70,16 +70,15 @@ def speak_text(text, lang="en"):
         tts = gTTS(text=text, lang=lang, slow=False)
         tts.save(audio_path)
 
-        def play_audio():
-            pygame.mixer.init()
-            pygame.mixer.music.load(audio_path)
-            pygame.mixer.music.play()
+        def play_audio(audio_file):
+    # Check if running in a non-GUI environment (like Render)
+    if os.environ.get("RENDER") or os.environ.get("CI"):
+        print("Skipping audio playback in Render environment")
+        return
 
-            while pygame.mixer.music.get_busy():
-                pygame.time.Clock().tick(10)
-
-            pygame.mixer.quit()
-            os.remove(audio_path)
+    pygame.mixer.init()
+    pygame.mixer.music.load(audio_file)
+    pygame.mixer.music.play()
 
         # Run in a separate thread
         threading.Thread(target=play_audio, daemon=True).start()
