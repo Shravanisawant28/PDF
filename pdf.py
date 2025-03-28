@@ -1,18 +1,13 @@
-
-from flask import Flask,render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
-import cv2
-import numpy as np
-from PIL import Image
-import io
 import os
 import tempfile
 import logging
 from gtts import gTTS
-import pygame
 import pytesseract
 from pdf2image import convert_from_bytes
-import threading
+import io
+from PIL import Image
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -20,6 +15,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend interaction
+
+# Ensure static audio directory exists
+AUDIO_DIR = "static/audio"
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # Supported languages for text extraction
 SUPPORTED_LANGUAGES = {"en": "eng", "hi": "hin", "mr": "mar"}
@@ -57,40 +56,33 @@ def extract_text_from_image(image_bytes, language="eng"):
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
+
 def speak_text(text, lang="en"):
-    """Convert text to speech and play it asynchronously."""
+    """Convert text to speech and return the file URL."""
     try:
         if lang == "eng":
             lang = "en"
 
-        temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        audio_path = temp_audio.name
-        temp_audio.close()
+        # Generate a unique filename
+        audio_filename = f"speech_{tempfile.mktemp(suffix='.mp3', dir=AUDIO_DIR).split('/')[-1]}"
+        audio_path = os.path.join(AUDIO_DIR, audio_filename)
 
+        # Generate speech file
         tts = gTTS(text=text, lang=lang, slow=False)
         tts.save(audio_path)
 
-        def play_audio(audio_file):
-    # Check if running in a non-GUI environment (like Render)
-    if os.environ.get("RENDER") or os.environ.get("CI"):
-        print("Skipping audio playback in Render environment")
-        return
-
-    pygame.mixer.init()
-    pygame.mixer.music.load(audio_file)
-    pygame.mixer.music.play()
-
-        # Run in a separate thread
-        threading.Thread(target=play_audio, daemon=True).start()
+        # Return the accessible file URL
+        return f"/static/audio/{audio_filename}"
 
     except Exception as e:
         logging.error(f"TTS error: {e}")
-        return f"Error generating speech: {str(e)}"
-    
+        return None
+
+
 @app.route("/")
 def index():
     """Render the HTML frontend"""
-    return render_template("index.html")   
+    return render_template("index.html")
 
 
 @app.route("/extract-text", methods=["POST"])
@@ -113,10 +105,10 @@ def extract_text():
         else:
             result = extract_text_from_image(file_bytes, language)
 
-        # Convert text to speech
-        speak_text(result, lang=language)
+        # Convert text to speech and get URL
+        audio_url = speak_text(result, lang=language)
 
-        return jsonify({"language": language, "extracted_text": result})
+        return jsonify({"language": language, "extracted_text": result, "audio_url": audio_url})
 
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
@@ -125,3 +117,4 @@ def extract_text():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
