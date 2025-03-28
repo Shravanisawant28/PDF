@@ -28,14 +28,16 @@ DEFAULT_LANGUAGE = "eng"
 pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 
 # Configure Poppler path (Update based on your system)
-POPPLER_PATH = r"C:\Users\Anu\Downloads\Release-24.08.0-0\poppler-24.08.0\Library\bin"
-os.environ["PATH"] += os.pathsep + POPPLER_PATH
+# No need to set POPPLER_PATH explicitly on Render since it's installed globally
+POPPLER_PATH = None  # Remove or set to None
+
 
 
 def extract_text_from_pdf(pdf_bytes, language="eng"):
     """Extract text from a PDF file using OCR with error handling."""
     try:
-        images = convert_from_bytes(pdf_bytes, poppler_path=POPPLER_PATH)
+        images = convert_from_bytes(pdf_bytes)  # No need to specify poppler_path
+
 
         if not images:
             return "PDF conversion failed. No images extracted."
