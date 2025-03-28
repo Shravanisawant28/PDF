@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 # Initialize Flask app
 app = Flask(__name__)
+UPLOAD_FOLDER = "uploads"
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 CORS(app)  # Enable CORS for frontend interaction
 
 # Ensure static audio directory exists
@@ -87,6 +89,22 @@ def index():
     """Render the HTML frontend"""
     return render_template("index.html")
 
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files["file"]
+    
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    file_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+    file.save(file_path)
+    
+    return jsonify({"message": "File uploaded successfully", "filename": file.filename})
+
+
 
 @app.route("/extract-text", methods=["POST"])
 def extract_text():
@@ -116,6 +134,8 @@ def extract_text():
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+
+
 
 
 if __name__ == "__main__":
