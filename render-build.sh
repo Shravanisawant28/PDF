@@ -1,2 +1,2 @@
 #!/bin/bash
-apt-get update && apt-get install -y poppler-utils
+sudo apt-get update && apt-get install -y poppler-utils
