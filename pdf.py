@@ -8,6 +8,7 @@ import pytesseract
 from pdf2image import convert_from_bytes
 import io
 from PIL import Image
+from uuid import uuid4
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -15,12 +16,14 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # Initialize Flask app
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
+AUDIO_DIR = "static/audio"
+
+# Ensure directories exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(AUDIO_DIR, exist_ok=True)
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 CORS(app)  # Enable CORS for frontend interaction
-
-# Ensure static audio directory exists
-AUDIO_DIR = "static/audio"
-os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # Supported languages for text extraction
 SUPPORTED_LANGUAGES = {"en": "eng", "hi": "hin", "mr": "mar"}
@@ -29,18 +32,14 @@ DEFAULT_LANGUAGE = "eng"
 # Configure Tesseract OCR path (Update based on your system)
 pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_PATH", "/usr/bin/tesseract")
 
-
 # Configure Poppler path (Update based on your system)
-# No need to set POPPLER_PATH explicitly on Render since it's installed globally
-POPPLER_PATH = os.getenv("POPPLER_PATH", "/usr/bin") # Remove or set to None
-
+POPPLER_PATH = os.getenv("POPPLER_PATH", "/usr/bin")
 
 
 def extract_text_from_pdf(pdf_bytes, language="eng"):
-    """Extract text from a PDF file using OCR with error handling."""
+    """Extract text from a PDF file using OCR."""
     try:
-        images = convert_from_bytes(pdf_bytes)  # No need to specify poppler_path
-
+        images = convert_from_bytes(pdf_bytes, dpi=300)  # High DPI for better accuracy
 
         if not images:
             return "PDF conversion failed. No images extracted."
@@ -49,6 +48,7 @@ def extract_text_from_pdf(pdf_bytes, language="eng"):
         return "\n".join(filter(None, text_list)) or "No text detected."
 
     except Exception as e:
+        logging.error(f"Error processing PDF: {e}")
         return f"Error processing PDF: {str(e)}"
 
 
@@ -59,24 +59,25 @@ def extract_text_from_image(image_bytes, language="eng"):
         text = pytesseract.image_to_string(image_pil, lang=language)
         return text.strip() if text else "No text detected."
     except Exception as e:
+        logging.error(f"Error processing image: {e}")
         return f"Error processing image: {str(e)}"
 
 
 def speak_text(text, lang="en"):
     """Convert text to speech and return the file URL."""
     try:
-        if lang == "eng":
-            lang = "en"
-
-        # Generate a unique filename
-        audio_filename = f"speech_{tempfile.mktemp(suffix='.mp3', dir=AUDIO_DIR).split('/')[-1]}"
+        lang = {"eng": "en", "hin": "hi", "mar": "mr"}.get(lang, "en")
+        audio_filename = f"speech_{uuid4().hex}.mp3"
         audio_path = os.path.join(AUDIO_DIR, audio_filename)
 
-        # Generate speech file
+        # Delete old files to free up space
+        for old_file in os.listdir(AUDIO_DIR):
+            if old_file.endswith(".mp3"):
+                os.remove(os.path.join(AUDIO_DIR, old_file))
+
         tts = gTTS(text=text, lang=lang, slow=False)
         tts.save(audio_path)
 
-        # Return the accessible file URL
         return f"/static/audio/{audio_filename}"
 
     except Exception as e:
@@ -89,8 +90,10 @@ def index():
     """Render the HTML frontend"""
     return render_template("index.html")
 
+
 @app.route("/upload", methods=["POST"])
 def upload_file():
+    """Handle file upload."""
     if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
 
@@ -105,7 +108,6 @@ def upload_file():
     return jsonify({"message": "File uploaded successfully", "filename": file.filename})
 
 
-
 @app.route("/extract-text", methods=["POST"])
 def extract_text():
     """API Endpoint to process PDFs and images for text extraction."""
@@ -117,7 +119,8 @@ def extract_text():
         language = request.form.get("language", "en")
         language = SUPPORTED_LANGUAGES.get(language, DEFAULT_LANGUAGE)
 
-        file_bytes = file.read()
+        file_bytes = file.stream.read()  # Read file once
+
         if not file_bytes:
             return jsonify({"error": "Empty file uploaded"}), 400
 
@@ -136,9 +139,8 @@ def extract_text():
         return jsonify({"error": "Internal Server Error"}), 500
 
 
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)  # Use port 8000 or what Render expects
+    app.run(host="0.0.0.0", port=8000, debug=True)  # Use port 8000 for local dev
+
 
 
