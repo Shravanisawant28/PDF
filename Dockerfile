@@ -23,8 +23,6 @@ COPY . .
 ENV TESSERACT_PATH=/usr/bin/tesseract
 ENV POPPLER_PATH=/usr/bin/pdftoppm
 
-# Expose port if running a web app
-EXPOSE 8000
 
 # Run the app
 CMD ["python", "pdf.py"]
