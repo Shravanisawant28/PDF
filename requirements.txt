@@ -1,0 +1,10 @@
+flask
+flask-cors
+numpy
+opencv-python-headless
+pillow
+gtts
+pygame
+pytesseract
+pdf2image
+gunicorn
