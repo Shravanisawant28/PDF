@@ -32,46 +32,61 @@
     <button onclick="playAudio()" style="display:none;" id="playButton">Play Audio</button>
     
     <script>
-        let audioUrl = "";
+       let audioUrl = "";
 
-        function uploadFile() {
-            let fileInput = document.getElementById('fileInput');
-            let file = fileInput.files[0];
-            let language = document.getElementById('languageSelect').value;
+function uploadFile() {
+    let fileInput = document.getElementById('fileInput');
+    let file = fileInput.files[0];
+    let language = document.getElementById('languageSelect').value;
 
-            if (!file) {
-                alert("Please select a file.");
-                return;
-            }
+    if (!file) {
+        alert("Please select a file.");
+        return;
+    }
 
-            let formData = new FormData();
-            formData.append("file", file);
-            formData.append("language", language);
+    let formData = new FormData();
+    formData.append("file", file);
+    formData.append("language", language);
 
-            fetch('https://pdf-2-j1k7.onrender.com/extract-text', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("output").innerText = data.extracted_text;
-
-                if (data.audio_url) {
-                    audioUrl = data.audio_url;
-                    document.getElementById("playButton").style.display = "block";
-                }
-            })
-            .catch(error => console.error("Error:", error));
+    fetch('https://pdf-2-j1k7.onrender.com/extract-text', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert("Error: " + data.error);
+            return;
         }
 
-        function playAudio() {
-            if (audioUrl) {
-                let audio = new Audio(audioUrl);
-                audio.play();
-            } else {
-                alert("No audio available.");
-            }
+        document.getElementById("output").innerText = data.extracted_text || "No text extracted.";
+
+        if (data.audio_url) {
+            audioUrl = data.audio_url;
+            document.getElementById("playButton").style.display = "block";
+        } else {
+            document.getElementById("playButton").style.display = "none";
+            alert("Audio could not be generated.");
         }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("An error occurred. Please try again.");
+    });
+  }
+
+   function playAudio() {
+    if (audioUrl) {
+        let audio = new Audio(audioUrl);
+        audio.play().catch(error => {
+            console.error("Audio playback error:", error);
+            alert("Audio playback failed.");
+        });
+    } else {
+        alert("No audio available.");
+    }
+ }
+
     </script>
 </body>
 </html>
