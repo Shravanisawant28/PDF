@@ -1,15 +1,14 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import os
-import tempfile
 import logging
+import io
+import glob
 from gtts import gTTS
 import pytesseract
 from pdf2image import convert_from_bytes
-import io
 from PIL import Image
 from uuid import uuid4
-import glob
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -35,24 +34,18 @@ pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_PATH", "/usr/bin/te
 # Configure Poppler path (Update based on your system)
 POPPLER_PATH = os.getenv("POPPLER_PATH", "/usr/bin")
 
-
 def extract_text_from_pdf(pdf_bytes, language="eng"):
     """Extract text from a PDF file using OCR."""
     try:
         images = convert_from_bytes(pdf_bytes, dpi=300)
-
         if not images:
             return "PDF conversion failed. No images extracted."
-
         text_list = [pytesseract.image_to_string(img, lang=language).strip() for img in images]
         extracted_text = "\n".join(filter(None, text_list))
-
         return extracted_text if extracted_text else "No text detected."
-
     except Exception as e:
         logging.error(f"Error processing PDF: {e}")
         return f"Error processing PDF: {str(e)}"
-
 
 def extract_text_from_image(image_bytes, language="eng"):
     """Extract text from an image using OCR."""
@@ -64,10 +57,13 @@ def extract_text_from_image(image_bytes, language="eng"):
         logging.error(f"Error processing image: {e}")
         return f"Error processing image: {str(e)}"
 
-
 def speak_text(text, lang="en"):
     """Convert text to speech and return the file URL."""
     try:
+        if not text.strip():
+            logging.warning("No valid text to convert to speech.")
+            return None
+
         lang_code = {"eng": "en", "hin": "hi", "mar": "mr"}.get(lang, "en")
         audio_filename = f"speech_{uuid4().hex}.mp3"
         audio_path = os.path.join(AUDIO_DIR, audio_filename)
@@ -81,17 +77,14 @@ def speak_text(text, lang="en"):
         tts.save(audio_path)
 
         return f"/static/audio/{audio_filename}"
-
     except Exception as e:
         logging.error(f"TTS error: {e}")
         return None
-
 
 @app.route("/")
 def index():
     """Render the HTML frontend"""
     return render_template("index.html")
-
 
 @app.route("/extract-text", methods=["POST"])
 def extract_text():
@@ -108,7 +101,6 @@ def extract_text():
             return jsonify({"error": "No selected file"}), 400
 
         file_bytes = file.read()  # Read file bytes
-
         if not file_bytes:
             return jsonify({"error": "Empty file uploaded"}), 400
 
@@ -121,14 +113,13 @@ def extract_text():
         audio_url = speak_text(result, lang=language)
 
         return jsonify({"language": language, "extracted_text": result, "audio_url": audio_url})
-
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)  # Use port 8000 for local dev
+
 
 
 
