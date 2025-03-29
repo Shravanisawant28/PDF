@@ -19,46 +19,61 @@
 <body>
     <h1>Upload a PDF or Image</h1>
     <input type="file" id="fileInput" accept=".pdf, .jpg, .png">
+    <select id="languageSelect">
+        <option value="en">English</option>
+        <option value="hi">Hindi</option>
+        <option value="mr">Marathi</option>
+    </select>
     <button onclick="uploadFile()">Upload</button>
-    
+
     <h2>Extracted Text:</h2>
     <div id="output"></div>
-    
+
     <button onclick="playAudio()" style="display:none;" id="playButton">Play Audio</button>
     
     <script>
+        let audioUrl = "";
+
         function uploadFile() {
             let fileInput = document.getElementById('fileInput');
             let file = fileInput.files[0];
+            let language = document.getElementById('languageSelect').value;
+
             if (!file) {
                 alert("Please select a file.");
                 return;
             }
-            
+
             let formData = new FormData();
             formData.append("file", file);
-            
+            formData.append("language", language);
 
-            fetch('https://https://pdf-2-j1k7.onrender.com/upload', {
-            method: 'POST',
-            body: formData
+            fetch('https://pdf-2-j1k7.onrender.com/extract-text', {
+                method: 'POST',
+                body: formData
             })
-
             .then(response => response.json())
             .then(data => {
-                document.getElementById("output").innerText = data.text;
-                if (data.audio) {
+                document.getElementById("output").innerText = data.extracted_text;
+
+                if (data.audio_url) {
+                    audioUrl = data.audio_url;
                     document.getElementById("playButton").style.display = "block";
                 }
             })
             .catch(error => console.error("Error:", error));
         }
-        
+
         function playAudio() {
-            let audio = new Audio("https://pdf-2-j1k7.onrender.com/audio");
-            audio.play();
+            if (audioUrl) {
+                let audio = new Audio(audioUrl);
+                audio.play();
+            } else {
+                alert("No audio available.");
+            }
         }
     </script>
 </body>
 </html>
+
 
