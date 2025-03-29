@@ -38,10 +38,12 @@
             let formData = new FormData();
             formData.append("file", file);
             
-            fetch("http://127.0.0.1:5000/upload", {
-                method: "POST",
-                body: formData
+
+            fetch('https://https://pdf-2-j1k7.onrender.com/upload', {
+            method: 'POST',
+            body: formData
             })
+
             .then(response => response.json())
             .then(data => {
                 document.getElementById("output").innerText = data.text;
@@ -53,7 +55,7 @@
         }
         
         function playAudio() {
-            let audio = new Audio("http://127.0.0.1:5000/audio");
+            let audio = new Audio("https://pdf-2-j1k7.onrender.com/audio");
             audio.play();
         }
     </script>
